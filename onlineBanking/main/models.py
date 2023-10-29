@@ -5,6 +5,7 @@ from django.db.models import Avg,Count
 from django.utils.text import slugify
 from phonenumber_field.modelfields import PhoneNumberField
 from django.utils import timezone
+from django.contrib.auth.models import Permission,Group
 
 from main.validators import validate_email
 # Create your models here.
@@ -23,7 +24,11 @@ class CustomUser(AbstractUser):
     address = models.CharField(max_length=255,blank=False)
     objects = CustomUserManager()
 
-    USERNAME_FIELD = 'username'
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['name', 'phone', 'address']
+
+    groups = models.ManyToManyField(Group, verbose_name='groups', related_name='groups')
+    user_permissions = models.ManyToManyField(Permission, verbose_name='permissions', related_name='permissions')
 
 class Account(models.Model):
     account_id = models.CharField(primary_key=True,max_length=255,unique=True)
@@ -49,8 +54,8 @@ class Account(models.Model):
         return reverse('account',kwargs={'slug': self.slug})
     
 class Transaction(models.Model):
-    from_account = models.ForeignKey(Account,on_delete=models.SET_NULL)
-    to_account = models.ForeignKey(Account,on_delete=models.SET_NULL)
+    from_account = models.ForeignKey(Account,on_delete=models.CASCADE,related_name="send_transaction")
+    to_account = models.ForeignKey(Account,on_delete=models.CASCADE,related_name="receive_transaction")
     money_transfer = models.DecimalField(max_digits=13,decimal_places=3)
     detail = models.CharField(max_length=255,default='transfer money')
     date = models.DateTimeField(auto_now=True)

@@ -128,8 +128,7 @@ STATIC_ROOT = os.path.join(BASE_DIR,'static/')
 MEDIA_ROOT = os.path.join(BASE_DIR,'media/')
 
 STATICFILES_DIRS = [
-    BASE_DIR / 'base/static',
-    BASE_DIR / 'management/static'
+    BASE_DIR / 'main/static',
 ]
 
 STATIC_VERSION = 1.0

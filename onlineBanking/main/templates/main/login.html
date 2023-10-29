@@ -1,0 +1,23 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h1>login into the bank</h1>
+<hr>
+<div class="login">
+    <form action="" method="POST">
+        <label for="email">Email</label>
+        <input type="text" name="email" id="email" placeholder="Enter your email"> 
+        <label for="email">password</label>
+        <input type="text" name="password" id="password" placeholder="Enter your password"> 
+        <button type="submit">log in</button>
+    </form>
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    </div>
+
+{% endblock %}
