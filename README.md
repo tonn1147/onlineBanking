@@ -16,7 +16,7 @@ python -m venv myenv
 ```
 3. install packages needed
 ```
-pip install -r requirement.txt
+pip install -r requirements.txt
 ```
 4. run venv
 + if you are on linux/MacOs
