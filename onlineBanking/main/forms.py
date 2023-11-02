@@ -1,6 +1,6 @@
 from django import forms
-from .models import CustomUser
-from django.contrib.auth.forms import UserCreationForm
+from .models import CustomUser,Account,Transaction
+from django.contrib.auth.forms import UserCreationForm,UserChangeForm
 from django.contrib.auth.hashers import make_password
 from django.forms.widgets import Input,PasswordInput
 from typing import Any
@@ -8,7 +8,7 @@ from typing import Any
 class SignupForm(UserCreationForm):
     class Meta:
         model = CustomUser
-        fields = ['username','name','email','address','phone','password1','password2']
+        fields = ['username','email','address','phone','password1','password2']
         widgets = {
             'username': Input(attrs={
                 'type': 'text',
@@ -25,13 +25,20 @@ class SignupForm(UserCreationForm):
             })
         }
     
-    def save(self, commit: bool = ...) -> Any:
-        form = super().save(commit=False)
-        form.password = make_password(self.cleaned_data.get('password'))
-        
-        if commit:
-            form.save()
+    def clean_username(self,*args,**kwargs):
+        username: str = self.cleaned_data.get("username")
 
-        return form
+        return username.upper()
 
+class CustomUserChangeForm(UserChangeForm):
 
+    class Meta:
+        model = CustomUser
+        fields = ['username','email','address','phone',]
+        widgets = {
+            'username': Input(attrs={
+                'type': 'text',
+                'placeholder': 'Username',
+                'name': 'username',
+            }),
+        }

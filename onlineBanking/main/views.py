@@ -1,8 +1,8 @@
-from django.shortcuts import render,redirect
 from django.http import HttpResponse,Http404,HttpRequest
 from django.shortcuts import render,get_object_or_404,redirect
 from django.db.models import Q
 from typing import Any
+from django.db import transaction
 from django.core.paginator import Paginator,PageNotAnInteger
 from django.urls import reverse,resolve
 from django.contrib.auth import authenticate,login,logout
@@ -16,19 +16,24 @@ from .forms import SignupForm
 from .models import CustomUser,Account,Transaction
 # Create your views here.
 
-def login(request: HttpRequest):
+def login_page(request: HttpRequest):
+    if request.user.is_authenticated:
+        return redirect("home")
+
     if request.method == "POST":
         email: str = request.POST.get("email")
         password: str = request.POST.get("password")
 
         try:
-            user = CustomUser.objects.first(email=email)
-            if not user: raise ValueError()
+            user = CustomUser.objects.filter(email=email)
+            if not user.exists(): raise ValueError()
             user = authenticate(request,email=email,password=password)
 
             if user is not None:
-                login(request,user)
+                login(request,user=user)
                 return redirect('home')
+            else:
+                messages.warning(request,"incorrect email or password")
         except ValueError:
             messages.error(request,"incorrect email or password")
     return render(request,'main/login.html',context=None)
@@ -43,45 +48,52 @@ def signup(request: HttpRequest):
     if request.method == "POST":
         form = SignupForm(request.POST)
         if form.is_valid():
-            user: CustomUser = form.save()
+            with transaction.atomic():
+                user: CustomUser = form.save()
 
-            # Get the `user` group, or create it if it doesn't exist.
-            user_group: QuerySet = Group.objects.get("user")
-            if not user_group.exists():
-                user_group: Group = Group.objects.create("user")
+                # Get the `user` group, or create it if it doesn't exist.
+                user_group: Group = Group.objects.get_or_create(name="user")
+                if user_group[1]:
+                    # Create permissions for viewing and creating transactions and accounts.
+                    pm_models = [Transaction, Account]
+                    for pm_model in pm_models:
+                        content_type: ContentType = ContentType.objects.get_for_model(pm_model)
+                        view_pm: Permission = Permission.objects.get_or_create(
+                            codename=f'view_{pm_model._meta.model_name}',
+                            content_type=content_type
+                        )
+                        create_pm: Permission = Permission.objects.get_or_create(
+                            codename=f'add_{pm_model._meta.model_name}',
+                            content_type=content_type
+                        )
+                        user_group[0].permissions.add(view_pm[0])
+                        user_group[0].permissions.add(create_pm[0])
 
-                # Create permissions for viewing and creating transactions and accounts.
-                pm_models = [Transaction, Account]
-                for pm_model in pm_models:
-                    content_type: ContentType = ContentType.objects.get_for_model(pm_model)
-                    view_pm: Permission = Permission.objects.create(
-                        codename=f'view_{pm_model._meta.model_name}',
-                        content_type=content_type
-                    )
-                    create_pm: Permission = Permission.objects.create(
-                        codename=f'create_{pm_model._meta.model_name}',
-                        content_type=content_type
-                    )
-                    user_group.permissions.add(view_pm)
-                    user_group.permissions.add(create_pm)
+                # Add the user to the `user` group.
+                user.is_active = False
+                user.save(force_update=True)
+                user.groups.add(user_group[0])
 
-            # Add the user to the `user` group.
-            user.groups.add(user_group)
-
-            # Log in the user and redirect them to the home page.
-            login(request, user)
-            return redirect('home')
-
+                # Log in the user and redirect them to the home page.
+                return redirect('login')
+    
     context = {"form": form}
     return render(request,"main/signup.html",context=context)
 
 @login_required(login_url='login')
 def home(request : HttpRequest):
-    raise NotImplementedError()
+    if not request.user.is_active: return HttpResponse("waiting for activating account")
 
-@login_required(login_url='login')
-def create_account(request: HttpRequest):
-    raise NotImplementedError()
+    accounts = Account.objects.all()
+    if request.method == "POST":
+        if request.POST.get("create-account") == "create":
+            user_id = request.user.id
+            account = Account.objects.create(user_id=user_id)
+            account.save()
+            return redirect(request.path_info)
+    
+    context = {"accounts": accounts}
+    return render(request,"main/home.html",context=context)
 
 @login_required(login_url='login')
 def view_account(request: HttpRequest):

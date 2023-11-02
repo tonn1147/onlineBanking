@@ -1,14 +1,21 @@
 {% extends 'layout.html' %}
 
+{% load static %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/login.css' %}"/>
+{% endblock %}
+
 {% block content %}
 <h1>login into the bank</h1>
 <hr>
 <div class="login">
     <form action="" method="POST">
+        {% csrf_token %}
         <label for="email">Email</label>
         <input type="text" name="email" id="email" placeholder="Enter your email"> 
         <label for="email">password</label>
-        <input type="text" name="password" id="password" placeholder="Enter your password"> 
+        <input type="password" name="password" id="password" placeholder="Enter your password"> 
         <button type="submit">log in</button>
     </form>
     {% if messages %}
@@ -18,6 +25,9 @@
         {% endfor %}
     </ul>
     {% endif %}
+</div>
+<div class="signup">
+    <h3>You haven't had a account yet ? <a href="{% url 'signup' %}">Sign up here!</a> </h3>
 </div>
 
 {% endblock %}

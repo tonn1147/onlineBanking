@@ -14,27 +14,25 @@ class CustomUserManager(UserManager):
     def create_user(self, username, email=None, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", False)
         extra_fields.setdefault("is_superuser", False)
-        extra_fields.setdefault("is_active", False)
         return self._create_user(username, email, password, **extra_fields)
 
 class CustomUser(AbstractUser):
-    name = models.CharField(max_length=100,default='user')
-    email = models.EmailField(max_length=100,null=False,unique=True,validators=[validate_email])
+    email = models.EmailField(max_length=100,null=False,unique=True)
     phone = PhoneNumberField(null=False,blank=False)
     address = models.CharField(max_length=255,blank=False)
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['name', 'phone', 'address']
+    REQUIRED_FIELDS = ["username",'phone', 'address']
 
-    groups = models.ManyToManyField(Group, verbose_name='groups', related_name='groups')
-    user_permissions = models.ManyToManyField(Permission, verbose_name='permissions', related_name='permissions')
+    # groups = models.ManyToManyField(Group, verbose_name='groups', related_name='user_group')
+    # user_permissions = models.ManyToManyField(Permission, verbose_name='permissions', related_name='user_permission')
 
 class Account(models.Model):
     account_id = models.CharField(primary_key=True,max_length=255,unique=True)
     user_id = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     slug = models.SlugField(unique=True,max_length=50,blank=True,editable=False)
-    current_balance = models.DecimalField(max_digits=13,decimal_places=3)
+    current_balance = models.DecimalField(max_digits=13,decimal_places=3,default=0)
     open_date = models.DateField(auto_now=True)
 
     def save(self,*args, **kwargs):
