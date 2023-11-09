@@ -1,0 +1,15 @@
+{% extends "main.html" %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/create_transaction.css' %}"/>
+{% endblock %}
+
+{% block content %}
+<h1>Transaction</h1>
+<hr>
+<form method="post">
+    {% csrf_token %}
+    {form.as_p}
+    <button type="submit">Transfer money</button>
+</form>
+{% endblock %}

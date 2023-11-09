@@ -29,7 +29,7 @@ class CustomUser(AbstractUser):
     # user_permissions = models.ManyToManyField(Permission, verbose_name='permissions', related_name='user_permission')
 
 class Account(models.Model):
-    account_id = models.CharField(primary_key=True,max_length=255,unique=True)
+    account_id = models.CharField(primary_key=True,max_length=12,unique=True,editable=False,blank=True)
     user_id = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     slug = models.SlugField(unique=True,max_length=50,blank=True,editable=False)
     current_balance = models.DecimalField(max_digits=13,decimal_places=3,default=0)
@@ -51,9 +51,12 @@ class Account(models.Model):
     def get_absolute_url(self):
         return reverse('account',kwargs={'slug': self.slug})
     
+    def __str__(self) -> str:
+        return f'{self.account_id}'
+    
 class Transaction(models.Model):
-    from_account = models.ForeignKey(Account,on_delete=models.CASCADE,related_name="send_transaction")
-    to_account = models.ForeignKey(Account,on_delete=models.CASCADE,related_name="receive_transaction")
+    from_account = models.ForeignKey(Account,on_delete=models.CASCADE,related_name="payer")
+    to_account = models.ForeignKey(Account,on_delete=models.CASCADE,related_name="payee")
     money_transfer = models.DecimalField(max_digits=13,decimal_places=3)
     detail = models.CharField(max_length=255,default='transfer money')
     date = models.DateTimeField(auto_now=True)

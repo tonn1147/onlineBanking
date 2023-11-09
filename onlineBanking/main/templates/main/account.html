@@ -1,0 +1,34 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/account.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="account">
+    <h1>account id: {{account.id}}</h1>
+    <h3>current balance: {{account.current_balance}}</h3>
+    <h5>open date: {{account.date}}</h5>
+</div>
+<div class="transactions">
+    <table>
+        <tr>
+            <th>from</th>
+            <th>to</th>
+            <th>amount</th>
+            <th>detail</th>
+            <th>date</th>
+        </tr>
+        {% for transaction in transactions %}
+        <tr>
+            <td>{{transaction.from_account}}</td>
+            <td>{{transaction.to_account}}</td>
+            <td>{{transaction.money_transfer}}</td>
+            <td>{{transaction.detail}}</td>
+            <td>{{transaction.date}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

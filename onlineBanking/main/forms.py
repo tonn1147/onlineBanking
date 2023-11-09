@@ -42,3 +42,10 @@ class CustomUserChangeForm(UserChangeForm):
                 'name': 'username',
             }),
         }
+
+class TransactionForm(forms.Form):
+    from_account = forms.CharField(max_length=12,required=True,disabled=True)
+    to_account = forms.CharField(max_length=12,required=True)
+    money_transfer = forms.DecimalField(max_digits=10,decimal_places=3,required=True)
+    detail = forms.CharField(max_length=255,empty_value="transfer money")
+    

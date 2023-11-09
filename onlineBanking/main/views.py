@@ -11,8 +11,9 @@ from django.db.models import QuerySet
 from django.contrib.auth.models import Group,Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib import messages
+from decimal import Decimal
 
-from .forms import SignupForm
+from .forms import SignupForm,TransactionForm
 from .models import CustomUser,Account,Transaction
 # Create your views here.
 
@@ -88,21 +89,56 @@ def home(request : HttpRequest):
     if request.method == "POST":
         if request.POST.get("create-account") == "create":
             user_id = request.user.id
-            account = Account.objects.create(user_id=user_id)
-            account.save()
+            Account.objects.create(user_id=user_id)
             return redirect(request.path_info)
     
     context = {"accounts": accounts}
     return render(request,"main/home.html",context=context)
 
 @login_required(login_url='login')
-def view_account(request: HttpRequest):
-    raise NotImplementedError()
+def view_account(request: HttpRequest,slug: str):
+    try:
+        account = Account.objects.get(slug=slug)
+    except:
+        raise Http404
+    
+    from_account_transaction: QuerySet = account.transaction_set.filter(from_account=slug).values_list("from_account","to_account","money_transfer","detail","date")
+    to_account_transaction: QuerySet = account.transaction_set.filter(to_account=slug).values_list("from_account","to_account","money_transfer","detail","date")
+    transactions: QuerySet = from_account_transaction.union(to_account_transaction).order_by("date")
+    
+    context = {"account": account,"transactions": transactions}
+    return render(request,"main/account.html",context=context)
 
 @login_required(login_url='login')
-def create_transaction(request: HttpRequest):
-    raise NotImplementedError()
+def create_transaction(request: HttpRequest,id: str):
+    try:
+        account: Account = Account.objects.get(slug=id)
+    except:
+        raise Http404
+    
+    initial_data = {"from_account": id}
+    form: TransactionForm = TransactionForm(initial=initial_data)
 
-@login_required(login_url='login')
-def view_transaction(request: HttpRequest):
-    raise NotImplementedError()
+    if request.method == "POST":
+        form: TransactionForm = TransactionForm(request.POST)
+        if form.is_valid():
+            from_account: str = form.cleaned_data["from_account"]
+            to_account: str = form.cleaned_data["to_account"]
+            money_transfer: Decimal = form.cleaned_data["money_transfer"]
+            detail: str = form.cleaned_data["detail"]
+            try:
+                payer: Account = Account.objects.select_for_update().get(account_id=from_account)
+                payee: Account = Account.objects.select_for_update().get(account_id=to_account)
+                
+                with transaction.atomic():
+                    payer.current_balance -= money_transfer
+                    payer.save()
+
+                    payee.current_balance += money_transfer
+                    payee.save()
+                    return redirect("account",slug=id)
+            except:
+                messages.error(request,"wrong account id!")
+            
+    context = {"account": account,"form": form}
+    return render(request,"main/transaction.html",context=context)
