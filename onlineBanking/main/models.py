@@ -5,7 +5,9 @@ from django.db.models import Avg,Count
 from django.utils.text import slugify
 from phonenumber_field.modelfields import PhoneNumberField
 from django.utils import timezone
+from django.core.validators import MinValueValidator
 from django.contrib.auth.models import Permission,Group
+from decimal import Decimal
 
 from main.validators import validate_email
 # Create your models here.
@@ -32,7 +34,7 @@ class Account(models.Model):
     account_id = models.CharField(primary_key=True,max_length=12,unique=True,editable=False,blank=True)
     user_id = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     slug = models.SlugField(unique=True,max_length=50,blank=True,editable=False)
-    current_balance = models.DecimalField(max_digits=13,decimal_places=3,default=0)
+    current_balance = models.DecimalField(max_digits=13,decimal_places=3,default=0,validators=[MinValueValidator(Decimal('0.01'))])
     open_date = models.DateField(auto_now=True)
 
     def save(self,*args, **kwargs):
@@ -52,7 +54,7 @@ class Account(models.Model):
         return reverse('account',kwargs={'slug': self.slug})
     
     def __str__(self) -> str:
-        return f'{self.account_id}'
+        return f'{self.account_id} - {self.user_id.email}'
     
 class Transaction(models.Model):
     from_account = models.ForeignKey(Account,on_delete=models.CASCADE,related_name="payer")

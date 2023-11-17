@@ -1,15 +1,26 @@
-{% extends 'main.html' %}
+{% extends 'layout.html' %}
 {% load static %}
 
 {% block css %}
-<link rel="stylesheet" href="{% static 'css/account.css' %}">
+<link rel="stylesheet" href="{% static 'css/account.css' %}"/>
 {% endblock %}
 
 {% block content %}
 <div class="account">
-    <h1>account id: {{account.id}}</h1>
-    <h3>current balance: {{account.current_balance}}</h3>
-    <h5>open date: {{account.date}}</h5>
+    <div class="account-info col-2">
+        <h1>account id: {{account.account_id}}</h1>
+        <h3>current balance: {{account.current_balance}}$</h3>
+        <h5>open date: {{account.open_date}}</h5>
+    </div>
+    <div class="col-2">
+        <a href="{% url 'create_transaction' account.slug %}" class="btn">Transfer money</a>
+    </div>
+</div>
+<div class="search">
+    <form method="get">
+        <input type="text" name="q" id="q">
+        <button type="submit">Search</button>
+    </form>
 </div>
 <div class="transactions">
     <table>
@@ -22,9 +33,9 @@
         </tr>
         {% for transaction in transactions %}
         <tr>
-            <td>{{transaction.from_account}}</td>
-            <td>{{transaction.to_account}}</td>
-            <td>{{transaction.money_transfer}}</td>
+            <td>{{transaction.from_account.account_id}}</td>
+            <td>{{transaction.to_account.account_id}}</td>
+            <td>{{transaction.money_transfer}}$</td>
             <td>{{transaction.detail}}</td>
             <td>{{transaction.date}}</td>
         </tr>

@@ -12,6 +12,7 @@ from django.contrib.auth.models import Group,Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib import messages
 from decimal import Decimal
+from django.db.models import Q
 
 from .forms import SignupForm,TransactionForm
 from .models import CustomUser,Account,Transaction
@@ -34,7 +35,7 @@ def login_page(request: HttpRequest):
                 login(request,user=user)
                 return redirect('home')
             else:
-                messages.warning(request,"incorrect email or password")
+                messages.warning(request,"user is not authenticated")
         except ValueError:
             messages.error(request,"incorrect email or password")
     return render(request,'main/login.html',context=None)
@@ -85,11 +86,10 @@ def signup(request: HttpRequest):
 def home(request : HttpRequest):
     if not request.user.is_active: return HttpResponse("waiting for activating account")
 
-    accounts = Account.objects.all()
+    accounts: QuerySet = Account.objects.filter(user_id=request.user)
     if request.method == "POST":
         if request.POST.get("create-account") == "create":
-            user_id = request.user.id
-            Account.objects.create(user_id=user_id)
+            Account.objects.create(user_id=request.user)
             return redirect(request.path_info)
     
     context = {"accounts": accounts}
@@ -102,21 +102,28 @@ def view_account(request: HttpRequest,slug: str):
     except:
         raise Http404
     
-    from_account_transaction: QuerySet = account.transaction_set.filter(from_account=slug).values_list("from_account","to_account","money_transfer","detail","date")
-    to_account_transaction: QuerySet = account.transaction_set.filter(to_account=slug).values_list("from_account","to_account","money_transfer","detail","date")
-    transactions: QuerySet = from_account_transaction.union(to_account_transaction).order_by("date")
+    from_account_transaction = Transaction.objects.filter(from_account__account_id__exact=account.account_id)
+    to_account_transaction = Transaction.objects.filter(to_account__account_id__exact=account.account_id)
+
+    # search function
+    search_request = request.GET.get('q')
+    if request.method == "GET" and search_request and request.GET.get('q') != '':
+        from_account_transaction = from_account_transaction.filter(detail__icontains=search_request)
+        to_account_transaction = to_account_transaction.filter(detail__icontains=search_request)
     
-    context = {"account": account,"transactions": transactions}
+    transactions = from_account_transaction.union(to_account_transaction)
+
+    context = {"account": account,"transactions": transactions.order_by("date")}
     return render(request,"main/account.html",context=context)
 
 @login_required(login_url='login')
-def create_transaction(request: HttpRequest,id: str):
+def create_transaction(request: HttpRequest,slug: str):
     try:
-        account: Account = Account.objects.get(slug=id)
+        account: Account = Account.objects.get(slug=slug)
     except:
         raise Http404
     
-    initial_data = {"from_account": id}
+    initial_data: dict[str,str] = {"from_account": account.account_id}
     form: TransactionForm = TransactionForm(initial=initial_data)
 
     if request.method == "POST":
@@ -129,16 +136,26 @@ def create_transaction(request: HttpRequest,id: str):
             try:
                 payer: Account = Account.objects.select_for_update().get(account_id=from_account)
                 payee: Account = Account.objects.select_for_update().get(account_id=to_account)
-                
-                with transaction.atomic():
-                    payer.current_balance -= money_transfer
-                    payer.save()
+                try:
+                    with transaction.atomic():
+                        payer.current_balance -= money_transfer
+                        payer.save()
 
-                    payee.current_balance += money_transfer
-                    payee.save()
-                    return redirect("account",slug=id)
+                        payee.current_balance += money_transfer
+                        payee.save()
+
+                except:
+                    messages.error(request,"Fail to transfer")
+                finally:
+                    Transaction.objects.create(from_account=payer,to_account=payee,money_transfer=money_transfer,detail=detail)
+                    return redirect("account",slug=slug)
             except:
                 messages.error(request,"wrong account id!")
             
     context = {"account": account,"form": form}
-    return render(request,"main/transaction.html",context=context)
+    return render(request,"main/create_transaction.html",context=context)
+
+@login_required(login_url="login")
+def view_logout(request: HttpRequest):
+    logout(request)
+    return redirect("login")

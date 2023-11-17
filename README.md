@@ -27,13 +27,14 @@ pip install -r requirements.txt
 ## Build Application
 
 1. run venv
-    + if you are on linux/MacOs
+
++ if you are on linux/MacOs
 
 ```
 source myenv/bin/activate
 ```
 
-    + if you are on Window
++ if you are on Window
 
 ```
 myenv/scripts/activate
