@@ -11,8 +11,10 @@ from django.db.models import QuerySet
 from django.contrib.auth.models import Group,Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib import messages
+from decimal import Decimal
+from django.db.models import Q
 
-from .forms import SignupForm
+from .forms import SignupForm,TransactionForm
 from .models import CustomUser,Account,Transaction
 # Create your views here.
 
@@ -33,7 +35,7 @@ def login_page(request: HttpRequest):
                 login(request,user=user)
                 return redirect('home')
             else:
-                messages.warning(request,"incorrect email or password")
+                messages.warning(request,"user is not authenticated")
         except ValueError:
             messages.error(request,"incorrect email or password")
     return render(request,'main/login.html',context=None)
@@ -84,25 +86,76 @@ def signup(request: HttpRequest):
 def home(request : HttpRequest):
     if not request.user.is_active: return HttpResponse("waiting for activating account")
 
-    accounts = Account.objects.all()
+    accounts: QuerySet = Account.objects.filter(user_id=request.user)
     if request.method == "POST":
         if request.POST.get("create-account") == "create":
-            user_id = request.user.id
-            account = Account.objects.create(user_id=user_id)
-            account.save()
+            Account.objects.create(user_id=request.user)
             return redirect(request.path_info)
     
     context = {"accounts": accounts}
     return render(request,"main/home.html",context=context)
 
 @login_required(login_url='login')
-def view_account(request: HttpRequest):
-    raise NotImplementedError()
+def view_account(request: HttpRequest,slug: str):
+    try:
+        account = Account.objects.get(slug=slug)
+    except:
+        raise Http404
+    
+    from_account_transaction = Transaction.objects.filter(from_account__account_id__exact=account.account_id)
+    to_account_transaction = Transaction.objects.filter(to_account__account_id__exact=account.account_id)
+
+    # search function
+    search_request = request.GET.get('q')
+    if request.method == "GET" and search_request and request.GET.get('q') != '':
+        from_account_transaction = from_account_transaction.filter(detail__icontains=search_request)
+        to_account_transaction = to_account_transaction.filter(detail__icontains=search_request)
+    
+    transactions = from_account_transaction.union(to_account_transaction)
+
+    context = {"account": account,"transactions": transactions.order_by("date")}
+    return render(request,"main/account.html",context=context)
 
 @login_required(login_url='login')
-def create_transaction(request: HttpRequest):
-    raise NotImplementedError()
+def create_transaction(request: HttpRequest,slug: str):
+    try:
+        account: Account = Account.objects.get(slug=slug)
+    except:
+        raise Http404
+    
+    initial_data: dict[str,str] = {"from_account": account.account_id}
+    form: TransactionForm = TransactionForm(initial=initial_data)
 
-@login_required(login_url='login')
-def view_transaction(request: HttpRequest):
-    raise NotImplementedError()
+    if request.method == "POST":
+        form: TransactionForm = TransactionForm(request.POST)
+        if form.is_valid():
+            from_account: str = form.cleaned_data["from_account"]
+            to_account: str = form.cleaned_data["to_account"]
+            money_transfer: Decimal = form.cleaned_data["money_transfer"]
+            detail: str = form.cleaned_data["detail"]
+            try:
+                payer: Account = Account.objects.select_for_update().get(account_id=from_account)
+                payee: Account = Account.objects.select_for_update().get(account_id=to_account)
+                try:
+                    with transaction.atomic():
+                        payer.current_balance -= money_transfer
+                        payer.save()
+
+                        payee.current_balance += money_transfer
+                        payee.save()
+
+                except:
+                    messages.error(request,"Fail to transfer")
+                finally:
+                    Transaction.objects.create(from_account=payer,to_account=payee,money_transfer=money_transfer,detail=detail)
+                    return redirect("account",slug=slug)
+            except:
+                messages.error(request,"wrong account id!")
+            
+    context = {"account": account,"form": form}
+    return render(request,"main/create_transaction.html",context=context)
+
+@login_required(login_url="login")
+def view_logout(request: HttpRequest):
+    logout(request)
+    return redirect("login")

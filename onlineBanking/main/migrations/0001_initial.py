@@ -64,8 +64,8 @@ class Migration(migrations.Migration):
                 ('detail', models.CharField(default='transfer money', max_length=255)),
                 ('date', models.DateTimeField(auto_now=True)),
                 ('slug', models.SlugField(blank=True, editable=False, unique=True)),
-                ('from_account', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='send_transaction', to='main.account')),
-                ('to_account', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='receive_transaction', to='main.account')),
+                ('from_account', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='payer', to='main.account')),
+                ('to_account', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='payee', to='main.account')),
             ],
         ),
     ]

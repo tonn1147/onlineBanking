@@ -7,7 +7,31 @@
 {% endblock %}
 
 {% block content %}
+<div class="small-container">
+    <div class="col-2">
+        <h1>welcome {{request.user.username}}</h1>
+        <a style="color: red;" href="{% url 'logout' %}">click here to logout</a>
+    </div>
+    <div class="col-2">
+        <p>You want to create a new account ?</p>
+        <form action="" method="post">
+            {% csrf_token %}
+            <input type="submit" name="create-account" value="create" class="btn">
+        </form>
+    </div>
+</div>
+<div class="container">
+    <h2>Your Accounts</h2>
+    <div class="accounts">
+        {% for account in accounts %}
+            <a class="account" href="{{account.get_absolute_url}}">
+                <h3>{{account.account_id}}</h3>
+                <strong>{{account.current_balance}}</strong>
+                <span>{{account.open_date}}</span>
+            </a>
+        {% endfor %}
+    </div>
+</div>
 
-<h1>welcome {{request.user.username}}</h1>
 
 {% endblock %}
