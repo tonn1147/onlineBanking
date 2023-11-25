@@ -12,7 +12,7 @@ from django.contrib.auth.models import Group,Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib import messages
 from decimal import Decimal
-from django.db.models import Q
+from django.db.models import Q,F
 
 from .forms import SignupForm,TransactionForm
 from .models import CustomUser,Account,Transaction
@@ -136,6 +136,9 @@ def create_transaction(request: HttpRequest,slug: str):
             try:
                 payer: Account = Account.objects.select_for_update().get(account_id=from_account)
                 payee: Account = Account.objects.select_for_update().get(account_id=to_account)
+
+                if money_transfer.compare(payer.current_balance) > 0:
+                    raise ValueError("your money transfer is larger than your current balance")
                 try:
                     with transaction.atomic():
                         payer.current_balance -= money_transfer
@@ -143,14 +146,13 @@ def create_transaction(request: HttpRequest,slug: str):
 
                         payee.current_balance += money_transfer
                         payee.save()
-
                 except:
                     messages.error(request,"Fail to transfer")
                 finally:
                     Transaction.objects.create(from_account=payer,to_account=payee,money_transfer=money_transfer,detail=detail)
                     return redirect("account",slug=slug)
-            except:
-                messages.error(request,"wrong account id!")
+            except ValueError:
+                messages.error(request,"your money transfer is larger than your current balance")
             
     context = {"account": account,"form": form}
     return render(request,"main/create_transaction.html",context=context)

@@ -32,9 +32,9 @@ class CustomUser(AbstractUser):
 
 class Account(models.Model):
     account_id = models.CharField(primary_key=True,max_length=12,unique=True,editable=False,blank=True)
-    user_id = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
+    user_id = models.ForeignKey(CustomUser,on_delete=models.SET_NULL,null=True)
     slug = models.SlugField(unique=True,max_length=50,blank=True,editable=False)
-    current_balance = models.DecimalField(max_digits=13,decimal_places=3,default=0,validators=[MinValueValidator(Decimal('0.01'))])
+    current_balance = models.DecimalField(max_digits=13,decimal_places=3,default=0,validators=[MinValueValidator(Decimal('0.0'))])
     open_date = models.DateField(auto_now=True)
 
     def save(self,*args, **kwargs):
@@ -57,12 +57,12 @@ class Account(models.Model):
         return f'{self.account_id} - {self.user_id.email}'
     
 class Transaction(models.Model):
-    from_account = models.ForeignKey(Account,on_delete=models.CASCADE,related_name="payer")
-    to_account = models.ForeignKey(Account,on_delete=models.CASCADE,related_name="payee")
+    from_account = models.ForeignKey(Account,on_delete=models.SET_NULL,related_name="payer",null=True)
+    to_account = models.ForeignKey(Account,on_delete=models.SET_NULL,related_name="payee",null=True)
     money_transfer = models.DecimalField(max_digits=13,decimal_places=3)
     detail = models.CharField(max_length=255,default='transfer money')
     date = models.DateTimeField(auto_now=True)
-    slug = models.SlugField(unique=True,max_length=50,blank=True,editable=False)
+    slug = models.SlugField(unique=False,max_length=50,blank=True,editable=False)
 
     def save(self,*args, **kwargs):
         if not self.slug:
@@ -71,3 +71,6 @@ class Transaction(models.Model):
 
     def get_absolute_url(self):
         return reverse('transaction',kwargs={'slug': self.slug})
+    
+    def __str__(self) -> str:
+        return f"{self.detail}"
